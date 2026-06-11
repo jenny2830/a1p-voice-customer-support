@@ -156,133 +156,41 @@ export default function Home() {
   };
 
   return (
-    <main
-      style={{
-        position: "relative",
-        minHeight: "100vh",
-        background: "#080610",
-        overflow: "hidden",
-        zIndex: 10,
-      }}
-    >
+    <main className="page">
       <Visualizer state={agentStatus} getFrequencyData={getFrequencyData} />
 
-      <a
-        href="https://a1potential.com"
-        style={{
-          position: "absolute",
-          top: 20,
-          left: 24,
-          fontSize: 11,
-          color: "rgba(255,255,255,0.25)",
-          textDecoration: "none",
-          letterSpacing: "1px",
-          zIndex: 10,
-        }}
-      >
+      <a href="https://a1potential.com" className="top-bar">
         ← a1potential.com
       </a>
 
-      <div
-        style={{
-          position: "relative",
-          zIndex: 10,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          style={{
-            marginTop: "calc(28vmin + 24px)",
-            textAlign: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <p
-            style={{
-              fontSize: 11,
-              letterSpacing: "4px",
-              color: "rgba(255,255,255,0.45)",
-              textTransform: "uppercase",
-              margin: 0,
-            }}
-          >
-            SYSTEM SECURE: JENNY
-          </p>
-          <p
-            style={{
-              fontSize: 11,
-              letterSpacing: "2px",
-              color: STATUS_COLORS[status],
-              marginTop: 8,
-            }}
-          >
+      <div className="center-zone">
+        <div className="status-block">
+          <p className="status-title">SYSTEM SECURE: JENNY</p>
+          <p className="status-pill" style={{ color: STATUS_COLORS[status] }}>
             {STATUS_LABELS[status]}
           </p>
         </div>
       </div>
 
-      <div
-        style={{
-          position: "absolute",
-          bottom: 40,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          pointerEvents: "auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            justifyContent: "center",
-            gap: 10,
-            marginBottom: 20,
-          }}
-        >
+      <div className="bottom-zone">
+        <div className="topic-pills">
           {TOPICS.map((topic) => (
             <button
               key={topic}
               type="button"
+              className="topic-pill"
               onClick={() => handleTopicClick(topic)}
-              style={{
-                border: "1px solid rgba(138,100,255,0.3)",
-                background: "rgba(138,100,255,0.08)",
-                color: "#c4b8ff",
-                fontSize: 12,
-                borderRadius: 40,
-                padding: "8px 18px",
-                cursor: "pointer",
-              }}
             >
               {topic}
             </button>
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div className="action-buttons">
           <button
             type="button"
+            className="btn-primary"
             onClick={() => void startConversation()}
-            style={{
-              background: "rgba(138,100,255,0.9)",
-              color: "white",
-              border: "none",
-              borderRadius: 40,
-              padding: "13px 36px",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
           >
             Start conversation
           </button>
@@ -290,30 +198,15 @@ export default function Home() {
           {isActive && (
             <button
               type="button"
+              className="btn-secondary"
               onClick={() => void endConversation()}
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255,0,100,0.4)",
-                color: "rgba(255,100,130,0.8)",
-                borderRadius: 40,
-                padding: "13px 36px",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
             >
               End call
             </button>
           )}
         </div>
 
-        <p
-          style={{
-            fontSize: 11,
-            color: "rgba(255,255,255,0.2)",
-            marginTop: 12,
-            textAlign: "center",
-          }}
-        >
+        <p className="billing-email">
           For billing issues email support@a1potential.com
         </p>
       </div>

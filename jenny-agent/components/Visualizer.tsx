@@ -20,6 +20,12 @@ interface VisualizerProps {
 const BAR_COUNT = 80;
 const PARTICLE_COUNT = 60;
 
+function getCircleRadiusScale(width: number): number {
+  if (width < 768) return 0.22;
+  if (width < 1024) return 0.25;
+  return 0.28;
+}
+
 function initParticles(width: number, height: number): Particle[] {
   return Array.from({ length: PARTICLE_COUNT }, () => ({
     x: Math.random() * width,
@@ -127,7 +133,7 @@ function drawSpectrum(
 ) {
   const cx = width / 2;
   const cy = height / 2;
-  const circleRadius = Math.min(width, height) * 0.28;
+  const circleRadius = Math.min(width, height) * getCircleRadiusScale(width);
   const outerMaxLength = circleRadius * 0.85;
   const innerMaxLength = circleRadius * 0.38;
 
@@ -158,7 +164,8 @@ function drawSpectrum(
     const cyanOpacity = purpleOpacity * 0.85;
 
     if (state !== "listening" || amp > 0.05) {
-      const outerLen = state === "listening" ? amp * outerMaxLength * 0.15 : amp * outerMaxLength;
+      const outerLen =
+        state === "listening" ? amp * outerMaxLength * 0.15 : amp * outerMaxLength;
       ctx.strokeStyle = `rgba(138,100,255,${purpleOpacity})`;
       ctx.lineWidth = 2.2;
       ctx.lineCap = "round";
@@ -182,6 +189,7 @@ function drawSpectrum(
 export default function Visualizer({ state, getFrequencyData }: VisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
+  const dimensionsRef = useRef({ width: 0, height: 0 });
   const timeRef = useRef(0);
   const rotationRef = useRef(0);
   const rafRef = useRef<number>(0);
@@ -204,24 +212,42 @@ export default function Visualizer({ state, getFrequencyData }: VisualizerProps)
     if (!ctx) return;
 
     const resize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
+      const prev = dimensionsRef.current;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      dimensionsRef.current = { width, height };
+
       if (particlesRef.current.length === 0) {
-        particlesRef.current = initParticles(window.innerWidth, window.innerHeight);
+        particlesRef.current = initParticles(width, height);
+      } else if (prev.width > 0 && prev.height > 0) {
+        const scaleX = width / prev.width;
+        const scaleY = height / prev.height;
+        for (const p of particlesRef.current) {
+          p.x *= scaleX;
+          p.y *= scaleY;
+        }
       }
     };
 
     resize();
     window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", resize);
 
     const draw = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      const { width, height } = dimensionsRef.current;
+      if (width === 0 || height === 0) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
       const currentState = stateRef.current;
 
       ctx.clearRect(0, 0, width, height);
@@ -255,6 +281,7 @@ export default function Visualizer({ state, getFrequencyData }: VisualizerProps)
 
     return () => {
       window.removeEventListener("resize", resize);
+      window.removeEventListener("orientationchange", resize);
       cancelAnimationFrame(rafRef.current);
     };
   }, []);
