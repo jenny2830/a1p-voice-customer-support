@@ -21,10 +21,10 @@ const STATUS_LABELS: Record<AgentStatus, string> = {
 };
 
 const STATUS_COLORS: Record<AgentStatus, string> = {
-  idle: "rgba(255,255,255,0.4)",
+  idle: "rgba(255,255,255,0.45)",
   listening: "#22d3ee",
-  speaking: "#8a64ff",
-  processing: "rgba(255,255,255,0.4)",
+  speaking: "#8B5FC0",
+  processing: "rgba(255,255,255,0.3)",
 };
 
 function mapConversationToStatus(
@@ -191,7 +191,10 @@ export default function Home() {
         <a href="https://a1potential.com" className="top-bar">
           ← a1potential.com
         </a>
-        <h1 className="page-title">SYSTEM SECURE: JENNY</h1>
+        <div className="page-title-block">
+          <h1 className="page-title">JENNY — Information Officer</h1>
+          <p className="page-subtitle">— System Secure —</p>
+        </div>
       </header>
 
       <p

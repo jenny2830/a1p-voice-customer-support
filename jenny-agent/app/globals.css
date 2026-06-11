@@ -32,13 +32,26 @@
   pointer-events: auto;
 }
 
-.page-title {
-  margin: 20px 0 0;
+.page-title-block {
+  margin-top: 18px;
   text-align: center;
+}
+
+.page-title {
+  margin: 0;
   color: #ffffff;
   font-size: 13px;
+  letter-spacing: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.page-subtitle {
+  margin: 5px 0 0;
+  color: #b388ff;
+  font-size: 11px;
   letter-spacing: 4px;
-  font-weight: 500;
+  font-weight: 400;
   text-transform: uppercase;
 }
 
@@ -46,11 +59,15 @@
   .page-title {
     font-size: 15px;
   }
+
+  .page-subtitle {
+    font-size: 12px;
+  }
 }
 
 .visualizer-status {
   position: absolute;
-  top: calc(50% + 22vmin + 20px);
+  top: calc(38vh + 22vmin + 80px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -63,13 +80,13 @@
 
 @media (min-width: 768px) {
   .visualizer-status {
-    top: calc(50% + 25vmin + 20px);
+    top: calc(38vh + 25vmin + 80px);
   }
 }
 
 @media (min-width: 1024px) {
   .visualizer-status {
-    top: calc(50% + 28vmin + 20px);
+    top: calc(38vh + 28vmin + 80px);
   }
 }
 

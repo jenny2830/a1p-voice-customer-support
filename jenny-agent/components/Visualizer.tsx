@@ -20,11 +20,22 @@ interface VisualizerProps {
 const BAR_COUNT = 80;
 const PARTICLE_COUNT = 60;
 const CLUSTER_SIZE = 9;
+const CIRCLE_Y_RATIO = 0.38;
+const BIN_COUNT = 256;
+
+const barPhaseOffsets = Array.from(
+  { length: BAR_COUNT },
+  () => Math.random() * Math.PI * 2
+);
 
 function getCircleRadiusScale(width: number): number {
   if (width < 768) return 0.22;
   if (width < 1024) return 0.25;
   return 0.28;
+}
+
+function getCircleCenterY(height: number): number {
+  return height * CIRCLE_Y_RATIO;
 }
 
 function initParticles(width: number, height: number): Particle[] {
@@ -37,34 +48,39 @@ function initParticles(width: number, height: number): Particle[] {
   }));
 }
 
-function getBarRegion(barIndex: number): "bass" | "mid" | "treble" {
-  if (barIndex <= 15 || barIndex >= 65) return "bass";
-  if (barIndex <= 39) return "mid";
-  return "treble";
-}
-
-function getPurpleColor(barIndex: number): string {
-  const region = getBarRegion(barIndex);
-  if (region === "bass") return "#aa64ff";
-  if (region === "treble") return "#64aaff";
-  return "#8a64ff";
+function logBinIndex(barIndex: number, dataLength: number): number {
+  const logMin = Math.log(1);
+  const logMax = Math.log(dataLength);
+  const t = barIndex / (BAR_COUNT - 1);
+  const logPos = logMin + (logMax - logMin) * t;
+  return Math.min(dataLength - 1, Math.max(0, Math.floor(Math.exp(logPos))));
 }
 
 function mapFrequencyToBar(
   frequencyData: Uint8Array,
   barIndex: number,
-  scale: number
+  scale: number,
+  binOffset = 0,
+  useRotation = false
 ): number {
-  const idx = Math.floor((barIndex / BAR_COUNT) * frequencyData.length);
-  let amp = (frequencyData[idx] ?? 0) / 255;
-
-  if (barIndex <= 15 || barIndex >= 65) {
-    amp *= 1.35;
-  } else if (barIndex >= 16 && barIndex <= 39) {
-    amp *= 1.15;
+  let idx: number;
+  if (useRotation) {
+    idx = (Math.floor(barIndex * 3.2) + binOffset) % frequencyData.length;
+  } else {
+    idx = logBinIndex(barIndex, frequencyData.length);
   }
+  return Math.min(1, ((frequencyData[idx] ?? 0) / 255) * scale);
+}
 
-  return Math.min(1, amp * scale);
+function normalizeAmplitudes(amps: number[]): void {
+  const max = Math.max(...amps, 0.001);
+  const avg = amps.reduce((sum, v) => sum + v, 0) / amps.length;
+  const cap = avg * 2.5;
+  if (max > cap) {
+    for (let i = 0; i < amps.length; i++) {
+      if (amps[i] > cap) amps[i] = cap;
+    }
+  }
 }
 
 function getRawAmplitudes(
@@ -73,11 +89,14 @@ function getRawAmplitudes(
   frequencyData: Uint8Array | null
 ): number[] {
   const amps = new Array<number>(BAR_COUNT).fill(0);
+  const frame = Math.floor(time / 0.016);
+  const binOffset = Math.floor((frame * 0.15) % BIN_COUNT);
 
   if (state === "speaking" && frequencyData) {
     for (let i = 0; i < BAR_COUNT; i++) {
-      amps[i] = mapFrequencyToBar(frequencyData, i, 1);
+      amps[i] = mapFrequencyToBar(frequencyData, i, 1, binOffset, true);
     }
+    normalizeAmplitudes(amps);
     return amps;
   }
 
@@ -85,16 +104,19 @@ function getRawAmplitudes(
     for (let i = 0; i < BAR_COUNT; i++) {
       amps[i] = mapFrequencyToBar(frequencyData, i, 0.6);
     }
+    normalizeAmplitudes(amps);
     return amps;
   }
 
   if (state === "idle") {
+    const base = 0.055;
     for (let i = 0; i < BAR_COUNT; i++) {
       amps[i] =
-        0.05 +
-        0.04 * Math.sin(time * 0.8 + i * 0.15) +
-        0.03 * Math.sin(time * 1.3 + i * 0.25) +
-        0.02 * Math.sin(time * 0.5 + i * 0.4);
+        base +
+        0.035 * Math.sin(time * 0.7 + i * 0.157) +
+        0.028 * Math.sin(time * 1.1 + i * 0.314 + 1.0) +
+        0.022 * Math.sin(time * 1.6 + i * 0.471 + 2.1) +
+        0.018 * Math.sin(time * 0.4 + i * 0.628 + 3.2);
     }
     return amps;
   }
@@ -171,22 +193,24 @@ function drawBar(
   outerMaxLength: number,
   innerMaxLength: number,
   barIndex: number,
-  state: VisualizerState,
-  bloom: boolean
+  time: number
 ) {
-  const purpleHex = getPurpleColor(barIndex);
-  const [pr, pg, pb] = hexToRgb(purpleHex);
+  const phase = barPhaseOffsets[barIndex];
+  const outerMod = 0.5 + 0.5 * Math.sin(phase + time * 0.3);
+  const innerMod = 0.5 + 0.5 * Math.sin(phase + time * 0.3 + Math.PI);
 
-  const isListening = state === "listening";
-  const purpleScale = isListening ? 0.4 : 1;
-  const cyanScale = isListening ? 1 : 0.55;
+  const outerAmp = amp * outerMod;
+  const innerAmp = amp * innerMod;
 
-  const purpleOpacity = Math.min(1, 0.55 + amp * 0.45) * purpleScale;
-  const cyanOpacity = Math.min(1, 0.55 + amp * 0.45) * cyanScale;
+  const isLoud = amp > 0.45;
+  const outerHex = isLoud ? "#8B5FC0" : "#6B3FA0";
+  const innerHex = isLoud ? "#2E5299" : "#1E3A6E";
+  const [or, og, ob] = hexToRgb(outerHex);
+  const [ir, ig, ib] = hexToRgb(innerHex);
 
-  const barWidth = state === "speaking" ? 2.2 + amp * 2.5 : 2.2;
-  const outerLen = amp * outerMaxLength * purpleScale;
-  const innerLen = amp * innerMaxLength * cyanScale;
+  const outerOpacity = 0.6 + outerAmp * 0.4;
+  const innerOpacity = 0.55 + innerAmp * 0.45;
+  const barWidth = 2.5;
 
   const drawStroke = (
     x1: number,
@@ -196,11 +220,10 @@ function drawBar(
     r: number,
     g: number,
     b: number,
-    opacity: number,
-    width: number
+    opacity: number
   ) => {
     ctx.strokeStyle = `rgba(${r},${g},${b},${opacity})`;
-    ctx.lineWidth = width;
+    ctx.lineWidth = barWidth;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -208,60 +231,32 @@ function drawBar(
     ctx.stroke();
   };
 
+  const outerLen = outerAmp * outerMaxLength;
   if (outerLen > 0.5) {
     drawStroke(
       edgeX,
       edgeY,
       edgeX + cos * outerLen,
       edgeY + sin * outerLen,
-      pr,
-      pg,
-      pb,
-      purpleOpacity,
-      barWidth
+      or,
+      og,
+      ob,
+      outerOpacity
     );
-
-    if (bloom) {
-      drawStroke(
-        edgeX,
-        edgeY,
-        edgeX + cos * outerLen,
-        edgeY + sin * outerLen,
-        pr,
-        pg,
-        pb,
-        purpleOpacity * 0.3,
-        barWidth * 3
-      );
-    }
   }
 
+  const innerLen = innerAmp * innerMaxLength;
   if (innerLen > 0.5) {
     drawStroke(
       edgeX,
       edgeY,
       edgeX - cos * innerLen,
       edgeY - sin * innerLen,
-      34,
-      211,
-      238,
-      cyanOpacity,
-      barWidth
+      ir,
+      ig,
+      ib,
+      innerOpacity
     );
-
-    if (bloom) {
-      drawStroke(
-        edgeX,
-        edgeY,
-        edgeX - cos * innerLen,
-        edgeY - sin * innerLen,
-        34,
-        211,
-        238,
-        cyanOpacity * 0.3,
-        barWidth * 3
-      );
-    }
   }
 }
 
@@ -275,7 +270,7 @@ function drawSpectrum(
   smoothedAmps: number[]
 ) {
   const cx = width / 2;
-  const cy = height / 2;
+  const cy = getCircleCenterY(height);
   const circleRadius = Math.min(width, height) * getCircleRadiusScale(width);
   const outerMaxLength = circleRadius * 0.85;
   const innerMaxLength = circleRadius * 0.38;
@@ -305,15 +300,10 @@ function drawSpectrum(
   }
 
   const rawAmps = getRawAmplitudes(state, time, frequencyData);
-  let overallVolume = 0;
 
   for (let i = 0; i < BAR_COUNT; i++) {
-    smoothedAmps[i] = smoothedAmps[i] * 0.75 + rawAmps[i] * 0.25;
-    overallVolume += smoothedAmps[i];
+    smoothedAmps[i] = smoothedAmps[i] * 0.72 + rawAmps[i] * 0.28;
   }
-
-  overallVolume /= BAR_COUNT;
-  const bloom = state === "speaking" && overallVolume > 0.25;
 
   for (let i = 0; i < BAR_COUNT; i++) {
     const angle = (i / BAR_COUNT) * Math.PI * 2 - Math.PI / 2;
@@ -321,7 +311,6 @@ function drawSpectrum(
     const sin = Math.sin(angle);
     const edgeX = cx + cos * circleRadius;
     const edgeY = cy + sin * circleRadius;
-    const amp = smoothedAmps[i];
 
     drawBar(
       ctx,
@@ -329,12 +318,11 @@ function drawSpectrum(
       edgeY,
       cos,
       sin,
-      amp,
+      smoothedAmps[i],
       outerMaxLength,
       innerMaxLength,
       i,
-      state,
-      bloom
+      time
     );
   }
 }
