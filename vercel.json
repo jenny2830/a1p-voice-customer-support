@@ -1,6 +1,3 @@
 {
-  "buildCommand": "cd jenny-agent && npm install && npm run build",
-  "outputDirectory": "jenny-agent/.next",
-  "installCommand": "cd jenny-agent && npm install",
   "framework": "nextjs"
 }
