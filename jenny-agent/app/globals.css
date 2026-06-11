@@ -12,62 +12,70 @@
   overflow: hidden;
 }
 
-.top-bar {
+.top-header {
   position: fixed;
-  top: max(20px, env(safe-area-inset-top));
-  left: max(24px, env(safe-area-inset-left));
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding-top: max(20px, env(safe-area-inset-top));
+  pointer-events: none;
+}
+
+.top-bar {
+  display: block;
+  padding-left: max(24px, env(safe-area-inset-left));
   font-size: 11px;
   color: rgba(255, 255, 255, 0.25);
   text-decoration: none;
   letter-spacing: 1px;
-  z-index: 10;
+  pointer-events: auto;
 }
 
-.center-zone {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  z-index: 10;
-  pointer-events: none;
-  padding: 48px 16px 0;
-}
-
-.status-block {
+.page-title {
+  margin: 20px 0 0;
   text-align: center;
-  margin-top: calc(22vmin + 24px);
+  color: #ffffff;
+  font-size: 13px;
+  letter-spacing: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 
 @media (min-width: 768px) {
-  .status-block {
-    margin-top: calc(25vmin + 24px);
+  .page-title {
+    font-size: 15px;
+  }
+}
+
+.visualizer-status {
+  position: absolute;
+  top: calc(50% + 22vmin + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .visualizer-status {
+    top: calc(50% + 25vmin + 20px);
   }
 }
 
 @media (min-width: 1024px) {
-  .status-block {
-    margin-top: calc(28vmin + 24px);
+  .visualizer-status {
+    top: calc(50% + 28vmin + 20px);
   }
-}
-
-.status-title {
-  font-size: 11px;
-  letter-spacing: 4px;
-  color: rgba(255, 255, 255, 0.45);
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.status-pill {
-  font-size: 11px;
-  letter-spacing: 2px;
-  margin-top: 8px;
 }
 
 .bottom-zone {
   flex-shrink: 0;
+  margin-top: auto;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -173,11 +181,7 @@
 }
 
 @media (max-width: 379px) {
-  .status-title {
-    font-size: 9px;
-  }
-
-  .status-pill {
+  .visualizer-status {
     font-size: 10px;
   }
 

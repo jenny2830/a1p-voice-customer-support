@@ -43,8 +43,10 @@ export default function Home() {
   const pendingTopicRef = useRef<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const frequencyBufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const inputAnalyserRef = useRef<AnalyserNode | null>(null);
+  const inputBufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   const conversation = useConversation({
     onConnect: () => setStatus("listening"),
@@ -74,54 +76,76 @@ export default function Home() {
     setStatus(agentStatus);
   }, [agentStatus]);
 
-  useEffect(() => {
-    if (agentStatus === "speaking") {
-      if (!audioContextRef.current) {
-        const ctx = new AudioContext();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        audioContextRef.current = ctx;
-        analyserRef.current = analyser;
-        frequencyBufferRef.current = new Uint8Array(
-          new ArrayBuffer(analyser.frequencyBinCount)
-        ) as Uint8Array<ArrayBuffer>;
-      }
-
-      if (audioContextRef.current.state === "suspended") {
-        void audioContextRef.current.resume();
-      }
+  const setupMicAnalyser = useCallback(async (stream: MediaStream) => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
     }
-  }, [agentStatus]);
+
+    const ctx = audioContextRef.current;
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    if (micSourceRef.current) {
+      micSourceRef.current.disconnect();
+    }
+
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    const source = ctx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    inputAnalyserRef.current = analyser;
+    micSourceRef.current = source;
+    micStreamRef.current = stream;
+    inputBufferRef.current = new Uint8Array(
+      new ArrayBuffer(analyser.frequencyBinCount)
+    ) as Uint8Array<ArrayBuffer>;
+  }, []);
 
   useEffect(() => {
     return () => {
+      micSourceRef.current?.disconnect();
+      micStreamRef.current?.getTracks().forEach((track) => track.stop());
       void audioContextRef.current?.close();
       audioContextRef.current = null;
-      analyserRef.current = null;
-      frequencyBufferRef.current = null;
+      inputAnalyserRef.current = null;
+      inputBufferRef.current = null;
+      micStreamRef.current = null;
+      micSourceRef.current = null;
     };
   }, []);
 
   const getFrequencyData = useCallback((): Uint8Array | null => {
-    const sdkData = conversation.getOutputByteFrequencyData?.();
-    if (sdkData && sdkData.length > 0) {
-      return sdkData;
+    if (agentStatus === "speaking") {
+      const sdkData = conversation.getOutputByteFrequencyData?.();
+      if (sdkData && sdkData.length > 0) {
+        return sdkData;
+      }
     }
 
-    const analyser = analyserRef.current;
-    const buffer = frequencyBufferRef.current;
-    if (analyser && buffer) {
-      analyser.getByteFrequencyData(buffer);
-      return buffer;
+    if (agentStatus === "listening") {
+      const analyser = inputAnalyserRef.current;
+      const buffer = inputBufferRef.current;
+      if (analyser && buffer) {
+        analyser.getByteFrequencyData(buffer);
+        return buffer;
+      }
+
+      const sdkInput = conversation.getInputByteFrequencyData?.();
+      if (sdkInput && sdkInput.length > 0) {
+        return sdkInput;
+      }
     }
 
     return null;
-  }, [conversation]);
+  }, [agentStatus, conversation]);
 
   const startConversation = useCallback(
     async (topic?: string) => {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        await setupMicAnalyser(stream);
         setIsActive(true);
         if (topic) {
           pendingTopicRef.current = topic;
@@ -141,7 +165,7 @@ export default function Home() {
         setIsActive(false);
       }
     },
-    [conversation]
+    [conversation, setupMicAnalyser]
   );
 
   const endConversation = useCallback(async () => {
@@ -149,6 +173,10 @@ export default function Home() {
     setStatus("idle");
     setIsActive(false);
     pendingTopicRef.current = null;
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micSourceRef.current?.disconnect();
+    micStreamRef.current = null;
+    micSourceRef.current = null;
   }, [conversation]);
 
   const handleTopicClick = (topic: string) => {
@@ -159,18 +187,19 @@ export default function Home() {
     <main className="page">
       <Visualizer state={agentStatus} getFrequencyData={getFrequencyData} />
 
-      <a href="https://a1potential.com" className="top-bar">
-        ← a1potential.com
-      </a>
+      <header className="top-header">
+        <a href="https://a1potential.com" className="top-bar">
+          ← a1potential.com
+        </a>
+        <h1 className="page-title">SYSTEM SECURE: JENNY</h1>
+      </header>
 
-      <div className="center-zone">
-        <div className="status-block">
-          <p className="status-title">SYSTEM SECURE: JENNY</p>
-          <p className="status-pill" style={{ color: STATUS_COLORS[status] }}>
-            {STATUS_LABELS[status]}
-          </p>
-        </div>
-      </div>
+      <p
+        className="visualizer-status"
+        style={{ color: STATUS_COLORS[status] }}
+      >
+        {STATUS_LABELS[status]}
+      </p>
 
       <div className="bottom-zone">
         <div className="topic-pills">
