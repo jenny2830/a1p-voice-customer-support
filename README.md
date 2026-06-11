@@ -1,6 +1,6 @@
-# Jenny Agent
+# a1p-voice-customer-support
 
-Voice support agent for A1Potential — a premium dark immersive interface powered by ElevenLabs.
+Customer support voice agent for A1Potential — a premium dark immersive interface powered by ElevenLabs (Jenny).
 
 ## Setup
 
